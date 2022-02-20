@@ -52,10 +52,10 @@ int main() {
 
         if (fin_gold.eof() ^ fin_bcoin.eof())
             assert(false);
-        
+
         if (fin_gold.eof())
             break;
-        
+
         file::Day now_gold, now_bcoin;
         now_gold.parseFromStr(s);
         now_bcoin.parseFromStr(t);
