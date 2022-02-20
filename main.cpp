@@ -4,17 +4,28 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <cmath>
 #include <string>
 #include <vector>
+#include <random>
 
 using f64 = double;
 using String = std::string;
 
-constexpr int TOTAL_DAY = 2000;
-constexpr f64 eps = 1e-9;
+constexpr int TOTAL_DAY{2000};
+constexpr int SEED{998244353};
+constexpr f64 eps{1e-9};
 
-bool less(double a, double b) {
+std::default_random_engine e(SEED);
+
+bool less(f64 a, f64 b) {
     return a + eps < b;
+}
+bool equal(f64 a, f64 b) {
+    return fabs(a - b) < eps;
+}
+bool lessOrEqual(f64 a, f64 b) {
+    return a < b + eps;
 }
 
 std::ifstream fin_gold("GOLD-FIXED.csv");
@@ -28,16 +39,76 @@ void printWorth(int tot) {
         std::cout << getDay[i] << ": " << getWorth[i] << "\n";
 }
 
+bool isOKToSale(int rhs) {
+    return !equal(getDay[rhs - 1].getValue(), getDay[rhs].getValue());
+}
+
 std::vector<String> logger;
 
-qwq::Money SA(qwq::Money now,
-        const qwq::Worth& today,
-        const qwq::Worth& tomorrow) {
-    f64 T = 1e6, _T = 1e-6;
+qwq::Money Summon(const qwq::Money& lhs,
+        const qwq::Worth& rhs,
+        const bool okToSale,
+        const f64 kT) {
 
-    while (less(_T, T)) {
-
+    qwq::Money res = lhs;
+    std::uniform_real_distribution<f64> u(-1, 1);
+    f64 pGold{u(e)}, pBcoin{u(e)};
+    if (okToSale) {
+        if (less(pGold, 0.)) {
+            f64 tmp = pGold * lhs.getGold();
+            res.addGold(tmp);
+            tmp = abs(tmp) * 0.99 * rhs.getGold();
+            res.addCash(tmp);
+        } else {
+            f64 tmp = pGold * lhs.getCash();
+            res.addCash(-tmp);
+            tmp /= rhs.getGold();
+            res.addGold(tmp * 0.99);
+        }
     }
+
+    if (less(pBcoin, 0.)) {
+        f64 tmp = pBcoin * lhs.getBitcoin();
+        res.addBitcoin(tmp);
+        tmp = abs(tmp) * 0.98 * rhs.getBitcoin();
+        res.addCash(tmp);
+    } else {
+        f64 tmp = pBcoin * lhs.getCash();
+        res.addCash(-tmp);
+        tmp /= rhs.getBitcoin();
+        res.addBitcoin(tmp * 0.98);
+    }
+
+    // if (less(res.getCash(), 0.)) {
+    //     std::cout << "GG";
+    //     assert(false);
+    // }
+    return res;
+}
+
+qwq::Money SA(qwq::Money now, int today, int tomorrow) {
+    constexpr f64 _T{1e-8}, delta{0.99};
+    bool okToSale{isOKToSale(today)};
+
+    f64 maxT{1e6}, T{1e6};
+    qwq::Money res = now;
+    while (less(_T, T)) {
+        qwq::Money tmp = Summon(now, getWorth[today], okToSale, T / maxT);
+        f64 vNow{res * getWorth[tomorrow]};
+        f64 vNew{tmp * getWorth[tomorrow]};
+
+        if (less(vNow, vNew))
+            res = tmp;
+        else {
+            std::uniform_real_distribution<f64> u(0, 1);
+            f64 P{exp((vNew - vNow) / T)};
+            if (lessOrEqual(u(e), P))
+                res = tmp;
+        }
+        T *= delta;
+    }
+    std::cout << (res * getWorth[tomorrow]) << ": ";
+    return res;
 }
 
 int main() {
@@ -45,7 +116,7 @@ int main() {
     std::getline(fin_gold, s);
     std::getline(fin_bcoin, t);
 
-    int idx = 1;
+    int idx{1};
     while (true) {
         std::getline(fin_gold, s);
         std::getline(fin_bcoin, t);
@@ -66,8 +137,13 @@ int main() {
         ++ idx;
     }
 
-    printWorth();
+    // printWorth(idx);
 
-    qwq::Money atFirst(1000., 0., 0.);
+    qwq::Money nowV(1000., 0., 0.);
+    for (int i{1}; i + 1 != idx; ++ i) {
+        qwq::Money adjust = SA(nowV, i, i + 1);
+        std::cout << nowV << " -> " << adjust << "\n";
+        nowV = adjust;
+    }
     return 0;
 }

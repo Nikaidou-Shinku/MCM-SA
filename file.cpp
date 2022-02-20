@@ -8,7 +8,7 @@ namespace file {
 using f64 = double;
 using String = std::string;
 
-constexpr int DAYS[] = {31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30};
+constexpr int DAYS[]{31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30};
 
 Day::Day() { }
 Day::Day(const int _y, const int _m, const int _d, const f64 _value) {
@@ -41,7 +41,7 @@ bool Day::isRun() const {
 }
 
 bool Day::lastDay() const {
-    int daysThisMonth = DAYS[m % 12];
+    int daysThisMonth{DAYS[m % 12]};
     if (isRun() && m == 2)
         ++ daysThisMonth;
     return d == daysThisMonth;
