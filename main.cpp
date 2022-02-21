@@ -12,10 +12,11 @@ using f64 = double;
 using String = std::string;
 
 constexpr int TOTAL_DAY{2000};
-constexpr int SEED{998244353};
+// constexpr int SEED{114514};
 constexpr f64 eps{1e-10};
 
-std::default_random_engine e(SEED);
+// std::default_random_engine e(SEED);
+std::random_device e;
 
 bool less(f64 a, f64 b) {
     return a + eps < b;
@@ -101,24 +102,25 @@ qwq::Money Summon(const qwq::Money& lhs,
     return res;
 }
 
-qwq::Money SA(qwq::Money now, int today, int tomorrow) {
-    constexpr f64 _T{1e-3}, delta{0.97};
+qwq::Money SA(qwq::Money now, int today, const qwq::Worth& tomorrow) {
+    constexpr f64 _T{1e-2}, delta{0.98};
     bool okToSale{isOKToSale(today)};
 
     if (!okToSale)
         std::cout << "\033[0;31mNo Gold | ";
     else std::cout << "\033[mOK Gold | ";
 
-    f64 T{1e5};
+    f64 T{1e8};
     qwq::Money res = now;
     f64 pBestGold{0.}, pBestBcoin{0.};
 
     while (less(_T, T)) {
-        f64 pGold{getP(pBestGold, (log10(T) + 3) / 8)};
-        f64 pBcoin{getP(pBestBcoin, (log10(T) + 3) / 8)};
+        const f64 kT{(log10(T) + 2) / 10};
+        f64 pGold{getP(pBestGold, kT)};
+        f64 pBcoin{getP(pBestBcoin, kT)};
         qwq::Money tmp = Summon(now, getWorth[today], okToSale, pGold, pBcoin);
-        f64 vNow{res * getWorth[tomorrow]};
-        f64 vNew{tmp * getWorth[tomorrow]};
+        f64 vNow{res * tomorrow};
+        f64 vNew{tmp * tomorrow};
 
         if (less(vNow, vNew)) {
             res = tmp;
@@ -135,11 +137,11 @@ qwq::Money SA(qwq::Money now, int today, int tomorrow) {
         }
         T *= delta;
     }
-    f64 vNow{res * getWorth[tomorrow]};
-    f64 vNew{now * getWorth[tomorrow]};
+    f64 vNow{res * tomorrow};
+    f64 vNew{now * tomorrow};
     if (less(vNow, vNew))
         res = now;
-    std::cout << (res * getWorth[tomorrow]) << ": ";
+    std::cout << (res * getWorth[today + 1]) << ": ";
     return res;
 }
 
@@ -173,7 +175,14 @@ int main() {
 
     qwq::Money nowV(1000., 0., 0.);
     for (int i{1}; i + 1 != idx; ++ i) {
-        qwq::Money adjust = SA(nowV, i, i + 1);
+        std::uniform_real_distribution<f64> u(-20, 20);
+        qwq::Worth expectTomorrow(1,
+            getWorth[i + 1].getGold() + u(e),
+            getWorth[i + 1].getBitcoin() + u(e));
+        // qwq::Worth expectTomorrow(1,
+        //     getWorth[i].getGold() * 2 - getWorth[i - 1].getGold(),
+        //     getWorth[i].getBitcoin() * 2 - getWorth[i - 1].getBitcoin());
+        qwq::Money adjust = SA(nowV, i, expectTomorrow);
         std::cout << getDay[i] << ": " << nowV << " -> " << adjust << "\n";
         nowV = adjust;
     }
