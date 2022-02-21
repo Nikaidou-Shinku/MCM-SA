@@ -103,7 +103,7 @@ qwq::Money Summon(const qwq::Money& lhs,
 }
 
 qwq::Money SA(qwq::Money now, int today, const qwq::Worth& tomorrow) {
-    constexpr f64 _T{1e-2}, delta{0.98};
+    constexpr f64 _T{1e-2}, delta{0.99};
     bool okToSale{isOKToSale(today)};
 
     if (!okToSale)
@@ -175,7 +175,7 @@ int main() {
 
     qwq::Money nowV(1000., 0., 0.);
     for (int i{1}; i + 1 != idx; ++ i) {
-        std::uniform_real_distribution<f64> u(-20, 20);
+        std::uniform_real_distribution<f64> u(-10, 10);
         qwq::Worth expectTomorrow(1,
             getWorth[i + 1].getGold() + u(e),
             getWorth[i + 1].getBitcoin() + u(e));
